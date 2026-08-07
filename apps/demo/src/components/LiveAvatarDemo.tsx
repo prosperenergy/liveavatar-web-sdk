@@ -1,183 +1,131 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { LiveAvatarSession } from "./LiveAvatarSession";
-import { SessionInteractivityMode } from "@heygen/liveavatar-web-sdk";
 
 export type SessionMode = "FULL" | "FULL_PTT" | "LITE";
 
 export const LiveAvatarDemo = () => {
-  const router = useRouter();
   const [sessionToken, setSessionToken] = useState("");
-  const [mode, setMode] = useState<SessionMode>("FULL");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [manualToken, setManualToken] = useState("");
-  const [manualMode, setManualMode] = useState<SessionMode>("FULL");
 
-  const handleStartFullSession = async (pushToTalk: boolean = false) => {
+  const startHanna = async () => {
     setLoading(true);
     setError(null);
+
     try {
-      const res = await fetch("/api/start-session", {
+      const response = await fetch("/api/start-lite-session", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ pushToTalk }),
+        headers: { "Content-Type": "application/json" },
       });
-      if (!res.ok) {
-        const error = await res.json();
-        console.error("Failed to start full session", error);
-        setError(error.error);
-        return;
+
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(payload?.error || "Unable to start HANNA");
       }
-      const { session_token } = await res.json();
-      setSessionToken(session_token);
-      setMode(pushToTalk ? "FULL_PTT" : "FULL");
-    } catch (error: unknown) {
-      setError((error as Error).message);
+
+      if (!payload?.session_token) {
+        throw new Error("HANNA did not receive a LiveAvatar session token");
+      }
+
+      setSessionToken(payload.session_token);
+    } catch (startError: unknown) {
+      setError(
+        startError instanceof Error
+          ? startError.message
+          : "Unable to start HANNA",
+      );
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleStartLiteSession = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/start-lite-session", {
-        method: "POST",
-      });
-      if (!res.ok) {
-        const error = await res.json();
-        setError(error.error);
-        return;
-      }
-      const { session_token } = await res.json();
-      setSessionToken(session_token);
-      setMode("LITE");
-    } catch (error: unknown) {
-      setError((error as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleStartWithToken = () => {
-    const trimmed = manualToken.trim();
-    if (!trimmed) {
-      setError("Please enter a session token.");
-      return;
-    }
-    setSessionToken(trimmed);
-    setMode(manualMode);
   };
 
   const onSessionStopped = () => {
     setSessionToken("");
-    setManualToken("");
   };
 
-  const voiceChatConfig = useMemo(() => {
-    if (mode === "FULL_PTT") {
-      return {
-        mode: SessionInteractivityMode.PUSH_TO_TALK,
-      };
-    }
-    return true;
-  }, [mode]);
-
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center">
+    <main className="min-h-screen w-full bg-slate-950 text-white">
       {!sessionToken ? (
-        <div className="w-full max-w-lg flex flex-col items-center gap-6 p-8">
-          <div className="text-center mb-2">
-            <h1 className="text-2xl font-semibold text-white mb-1">
-              LiveAvatar Demo
-            </h1>
-            <p className="text-sm text-gray-400">
-              Choose a session mode to get started
-            </p>
-          </div>
+        <section className="mx-auto flex min-h-screen w-full max-w-5xl items-center justify-center px-6 py-12">
+          <div className="w-full overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] shadow-2xl shadow-black/40">
+            <div className="grid gap-0 md:grid-cols-[1.1fr_0.9fr]">
+              <div className="flex flex-col justify-center p-8 md:p-12">
+                <div className="mb-6 inline-flex w-fit items-center gap-2 rounded-full border border-sky-400/30 bg-sky-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-sky-300">
+                  PROSPER LIVE
+                </div>
 
-          {error && (
-            <div className="w-full px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-              {error}
+                <h1 className="text-4xl font-semibold tracking-tight md:text-6xl">
+                  Meet HANNA
+                </h1>
+
+                <p className="mt-4 max-w-xl text-base leading-7 text-slate-300 md:text-lg">
+                  Prosper&apos;s live solar assistant. HANNA can answer questions,
+                  learn about your home, and help connect you with the right
+                  advisor.
+                </p>
+
+                <div className="mt-8 flex flex-wrap gap-3 text-sm text-slate-400">
+                  <span className="rounded-full border border-white/10 px-3 py-1.5">
+                    Solar questions
+                  </span>
+                  <span className="rounded-full border border-white/10 px-3 py-1.5">
+                    Home qualification
+                  </span>
+                  <span className="rounded-full border border-white/10 px-3 py-1.5">
+                    Appointment help
+                  </span>
+                </div>
+
+                {error && (
+                  <div className="mt-6 rounded-xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                    {error}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={startHanna}
+                  disabled={loading}
+                  className="mt-8 inline-flex w-full items-center justify-center rounded-xl bg-sky-400 px-6 py-3.5 text-base font-semibold text-slate-950 transition hover:bg-sky-300 disabled:cursor-not-allowed disabled:opacity-60 sm:w-fit"
+                >
+                  {loading ? "Starting HANNA..." : "Start HANNA"}
+                </button>
+
+                <p className="mt-3 text-xs text-slate-500">
+                  Starting a session may request microphone permission.
+                </p>
+              </div>
+
+              <div className="relative min-h-72 border-t border-white/10 bg-gradient-to-br from-sky-500/20 via-slate-900 to-amber-300/10 md:min-h-[560px] md:border-l md:border-t-0">
+                <div className="absolute inset-0 flex items-center justify-center p-8">
+                  <div className="flex h-44 w-44 items-center justify-center rounded-full border border-sky-300/30 bg-slate-950/60 shadow-[0_0_80px_rgba(56,189,248,0.18)]">
+                    <span className="text-6xl font-semibold tracking-tight text-sky-300">
+                      H
+                    </span>
+                  </div>
+                </div>
+                <div className="absolute bottom-8 left-8 right-8 rounded-2xl border border-white/10 bg-black/30 p-4 backdrop-blur">
+                  <p className="text-sm font-medium text-white">HANNA is ready</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-400">
+                    Secure LiveAvatar sessions are created by the Prosper server.
+                    API keys are never sent to the browser.
+                  </p>
+                </div>
+              </div>
             </div>
-          )}
-
-          <div className="w-full flex flex-col gap-3">
-            <button
-              onClick={() => handleStartFullSession(false)}
-              disabled={loading}
-              className="w-full px-6 py-2.5 rounded-lg bg-white/10 text-white font-medium text-base border border-white/20 hover:bg-white/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? "Starting..." : "Full Mode"}
-            </button>
-            <button
-              onClick={() => handleStartFullSession(true)}
-              disabled={loading}
-              className="w-full px-6 py-2.5 rounded-lg bg-white/10 text-white font-medium text-base border border-white/20 hover:bg-white/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? "Starting..." : "Full Mode (Push to Talk)"}
-            </button>
-            <button
-              onClick={handleStartLiteSession}
-              disabled={loading}
-              className="w-full px-6 py-2.5 rounded-lg bg-white/10 text-white font-medium text-base border border-white/20 hover:bg-white/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? "Starting..." : "Lite Mode"}
-            </button>
-            <button
-              onClick={() => {
-                setError(null);
-                router.push("/elevenlabs-agent");
-              }}
-              disabled={loading}
-              className="w-full px-6 py-2.5 rounded-lg bg-white/10 text-white font-medium text-base border border-white/20 hover:bg-white/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              ElevenLabs Agent Connector →
-            </button>
           </div>
-
-          <div className="w-full flex flex-col items-center gap-3 pt-6 border-t border-white/10">
-            <span className="text-xs text-gray-500 uppercase tracking-wider">
-              Or use an existing token
-            </span>
-            <input
-              type="text"
-              value={manualToken}
-              onChange={(e) => setManualToken(e.target.value)}
-              placeholder="Paste session token"
-              className="w-full px-4 py-2.5 rounded-lg bg-white/5 text-white text-sm border border-white/10 focus:outline-none focus:border-white/30 placeholder-gray-500 transition-colors"
-            />
-            <select
-              value={manualMode}
-              onChange={(e) => setManualMode(e.target.value as SessionMode)}
-              className="w-full px-4 py-2.5 rounded-lg bg-white/5 text-white text-sm border border-white/10 focus:outline-none focus:border-white/30 transition-colors"
-            >
-              <option value="FULL">Full Mode</option>
-              <option value="FULL_PTT">Full Mode (Push To Talk)</option>
-              <option value="LITE">Lite Mode</option>
-            </select>
-            <button
-              onClick={handleStartWithToken}
-              className="w-full px-6 py-2.5 rounded-lg bg-white/10 text-white font-medium text-base border border-white/20 hover:bg-white/20 transition-colors"
-            >
-              Connect
-            </button>
-          </div>
-        </div>
+        </section>
       ) : (
         <LiveAvatarSession
-          mode={mode}
+          mode="LITE"
           sessionAccessToken={sessionToken}
-          voiceChatConfig={voiceChatConfig}
+          voiceChatConfig={true}
           onSessionStopped={onSessionStopped}
         />
       )}
-    </div>
+    </main>
   );
 };
